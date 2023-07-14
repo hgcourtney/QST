@@ -1,0 +1,73 @@
+
+#created 12 JUL 2023 by Henry Courtney for Use with Linewize Filter
+#This script will help identify if execption have been set for antivirus correctly for the folders
+
+$eicartestfile = 'https://secure.eicar.org/eicar.com.txt'
+$Testfilename = 'avtest.txt'
+$Results = @{}
+
+
+$Testpaths = @(
+    'C:\Program Files (x86)\FamilyZone\AuthenticationAgent\bin\'
+    'C:\Program Files (x86)\FamilyZone\MobileZoneAgent\bin\'
+    'C:\Program Files (x86)\FamilyZone\MobileZoneAgent\lib\java\bin\'
+    'C:\Program Files (x86)\FamilyZone\MobileZoneAgent\'
+)
+
+
+ForEach ($Testpath in $Testpaths) {
+    $testfile = Join-Path -path $Testpath -ChildPath $Testfilename
+    Invoke-WebRequest -UseBasicParsing -Uri $eicartestfile -OutFile  $testfile
+
+    #have script read file
+    Get-Content $testfile | Out-Null -ErrorAction SilentlyContinue
+
+    Start-Sleep 3
+    #check to see if the file contains the eicars string
+    if ((Get-Content $testfile) -match 'EICAR-STANDARD-ANTIVIRUS-TEST') {
+
+        #if pass add to results
+        $Results.Add($Testpath, 'Passed')
+
+        #write to host for the test
+        Write-Host $Testpath   Passed -ForegroundColor Green
+
+        #clean up the file
+        Remove-Item $testfile
+
+    }
+    else {
+        #if it fails add to results
+        $Results.Add($Testpath, 'Failed')
+
+        #write to host for the test
+        Write-Host $Testpath   Failed -ForegroundColor Red
+    }
+
+}
+
+#write to screen
+
+$Results  | Format-Table @{L = â€™Pathâ€™; E = { $_.key } }, @{L = â€™Test Resultsâ€™; E = { $_.Value } } 
+
+#write to file. Same folder as script
+$Results | Format-Table @{L = â€™Pathâ€™; E = { $_.key } }, @{L = â€™Test Resultsâ€™; E = { $_.Value } }  | Out-File .\Linewize_AV_Test_Results.txt
+
+
+<# Extra commands
+
+#Get Windows Defnder Exclusions
+(Get-MpPreference).ExclusionPath
+
+#Add Windows Defnder Exclusions for Linewize Connect and Auth
+Add-MpPreference -ExclusionPath "C:\Program Files (x86)\FamilyZone\AuthenticationAgent\bin"
+Add-MpPreference -ExclusionPath "C:\Program Files (x86)\FamilyZone\MobileZoneAgent\bin"
+Add-MpPreference -ExclusionPath "C:\Program Files (x86)\FamilyZone\MobileZoneAgent\lib\java\bin"
+Add-MpPreference -ExclusionPath "C:\Program Files (x86)\FamilyZone\MobileZoneAgent"
+
+#remove Windows Defnder Exclusions for Linewize Connect and Auth
+remove-MpPreference -ExclusionPath "C:\Program Files (x86)\FamilyZone\AuthenticationAgent\bin"
+remove-MpPreference -ExclusionPath "C:\Program Files (x86)\FamilyZone\MobileZoneAgent\bin"
+remove-MpPreference -ExclusionPath "C:\Program Files (x86)\FamilyZone\MobileZoneAgent\lib\java\bin"
+remove-MpPreference -ExclusionPath "C:\Program Files (x86)\FamilyZone\MobileZoneAgent"
+#>
